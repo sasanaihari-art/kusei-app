@@ -5,8 +5,8 @@ const FamilyManager = (() => {
   const STORAGE_KEY = 'kusei_family';
 
   const DEFAULT_MEMBERS = [
-    { id: 'self', name: '自分', honmei: 9, getsu: 7 },
-    { id: 'wife', name: '妻', honmei: 8, getsu: 9 },
+    { id: 'self', name: '道成', honmei: 9, getsu: 7 },
+    { id: 'wife', name: 'あす香', honmei: 8, getsu: 9 },
   ];
 
   function getMembers() {

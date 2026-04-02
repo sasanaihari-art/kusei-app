@@ -5,7 +5,7 @@ const PlacesManager = (() => {
   const STORAGE_KEY = 'kusei_places';
   const HOME_KEY = 'kusei_home';
 
-  const DEFAULT_HOME = { lat: 34.3536, lng: 130.8917, name: '自宅（長門市油谷）' };
+  const DEFAULT_HOME = { lat: 34.4075, lng: 131.0119, name: '自宅（長門市油谷）' };
 
   function getHome() {
     const stored = localStorage.getItem(HOME_KEY);
