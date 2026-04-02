@@ -1,10 +1,10 @@
 const CACHE_NAME = 'kusei-v1';
 const ASSETS = [
-  '/', '/index.html', '/map.html', '/places.html', '/settings.html',
-  '/css/style.css',
-  '/js/kusei-engine.js', '/js/chart.js', '/js/app.js',
-  '/js/family.js', '/js/places.js',
-  '/manifest.json'
+  './', './index.html', './map.html', './places.html', './settings.html',
+  './css/style.css',
+  './js/kusei-engine.js', './js/chart.js', './js/app.js',
+  './js/family.js', './js/places.js',
+  './manifest.json'
 ];
 
 self.addEventListener('install', (e) => {
