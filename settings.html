@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#1a237e">
+  <title>設定</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="header">
+    <h1>設定</h1>
+  </div>
+
+  <!-- Home Location -->
+  <div class="setting-group">
+    <h3 style="font-size:14px;margin-bottom:8px;">自宅（基準位置）</h3>
+    <div class="setting-item">
+      <div class="form-group">
+        <label>名前</label>
+        <input type="text" id="home-name">
+      </div>
+      <div class="form-group">
+        <label>住所</label>
+        <input type="text" id="home-address" placeholder="住所を入力して検索">
+      </div>
+      <div class="flex-gap">
+        <div class="form-group" style="flex:1;">
+          <label>緯度</label>
+          <input type="number" id="home-lat" step="0.0001">
+        </div>
+        <div class="form-group" style="flex:1;">
+          <label>経度</label>
+          <input type="number" id="home-lng" step="0.0001">
+        </div>
+      </div>
+      <div id="home-geocode-status" style="font-size:12px;color:#757575;margin-bottom:8px;"></div>
+      <div class="flex-gap">
+        <button class="btn" id="btn-home-geocode" style="background:#e0e0e0;">住所検索</button>
+        <button class="btn btn-primary" id="btn-home-save">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Family Members -->
+  <div class="setting-group">
+    <h3 style="font-size:14px;margin-bottom:8px;">家族メンバー</h3>
+    <div id="member-list"></div>
+    <button class="btn btn-primary btn-block mt-8" id="btn-add-member">メンバー追加</button>
+  </div>
+
+  <!-- Notification Settings -->
+  <div class="setting-group">
+    <h3 style="font-size:14px;margin-bottom:8px;">通知</h3>
+    <div class="setting-item">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div>
+          <div class="setting-label">凶方位の通知</div>
+          <div style="font-size:12px;color:#757575;">毎朝、五黄殺・暗剣殺の方位と登録場所の警告を通知</div>
+        </div>
+        <label style="position:relative;display:inline-block;width:48px;height:26px;">
+          <input type="checkbox" id="notif-toggle" style="opacity:0;width:0;height:0;">
+          <span id="notif-slider" style="position:absolute;cursor:pointer;inset:0;background:#ccc;border-radius:13px;transition:.3s;"></span>
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Member Modal -->
+  <div id="member-modal" class="modal-overlay">
+    <div class="modal">
+      <h2 id="modal-title">メンバー追加</h2>
+      <input type="hidden" id="edit-member-id">
+      <div class="form-group">
+        <label>名前</label>
+        <input type="text" id="member-name" placeholder="例: 太郎">
+      </div>
+      <div class="form-group">
+        <label>本命星</label>
+        <select id="member-honmei">
+          <option value="1">一白水星</option>
+          <option value="2">二黒土星</option>
+          <option value="3">三碧木星</option>
+          <option value="4">四緑木星</option>
+          <option value="5">五黄土星</option>
+          <option value="6">六白金星</option>
+          <option value="7">七赤金星</option>
+          <option value="8">八白土星</option>
+          <option value="9">九紫火星</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>月命星</label>
+        <select id="member-getsu">
+          <option value="1">一白水星</option>
+          <option value="2">二黒土星</option>
+          <option value="3">三碧木星</option>
+          <option value="4">四緑木星</option>
+          <option value="5">五黄土星</option>
+          <option value="6">六白金星</option>
+          <option value="7">七赤金星</option>
+          <option value="8">八白土星</option>
+          <option value="9">九紫火星</option>
+        </select>
+      </div>
+      <div class="flex-gap mt-8">
+        <button class="btn btn-primary btn-block" id="btn-save-member" style="flex:2;">保存</button>
+        <button class="btn" id="btn-cancel-member" style="flex:1;background:#e0e0e0;">閉じる</button>
+      </div>
+    </div>
+  </div>
+
+  <nav class="nav">
+    <a href="index.html"><span class="nav-icon">&#x2609;</span><span>方位盤</span></a>
+    <a href="map.html"><span class="nav-icon">&#x1F5FA;</span><span>地図</span></a>
+    <a href="places.html"><span class="nav-icon">&#x2605;</span><span>場所</span></a>
+    <a href="settings.html" class="active"><span class="nav-icon">&#x2699;</span><span>設定</span></a>
+  </nav>
+
+  <script src="js/kusei-engine.js"></script>
+  <script src="js/family.js"></script>
+  <script src="js/places.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      // Home location
+      const home = PlacesManager.getHome();
+      document.getElementById('home-name').value = home.name || '';
+      document.getElementById('home-lat').value = home.lat;
+      document.getElementById('home-lng').value = home.lng;
+
+      document.getElementById('btn-home-geocode').addEventListener('click', async () => {
+        const address = document.getElementById('home-address').value.trim();
+        if (!address) return;
+        const status = document.getElementById('home-geocode-status');
+        status.textContent = '検索中...';
+        const result = await PlacesManager.geocode(address);
+        if (result) {
+          document.getElementById('home-lat').value = result.lat.toFixed(4);
+          document.getElementById('home-lng').value = result.lng.toFixed(4);
+          status.textContent = result.displayName;
+          status.style.color = '#2e7d32';
+        } else {
+          status.textContent = '見つかりませんでした';
+          status.style.color = '#c62828';
+        }
+      });
+
+      document.getElementById('btn-home-save').addEventListener('click', () => {
+        const name = document.getElementById('home-name').value.trim();
+        const lat = parseFloat(document.getElementById('home-lat').value);
+        const lng = parseFloat(document.getElementById('home-lng').value);
+        if (isNaN(lat) || isNaN(lng)) { alert('座標を入力してください'); return; }
+        PlacesManager.setHome({ name, lat, lng });
+        alert('自宅位置を保存しました');
+      });
+
+      // Family members
+      const modal = document.getElementById('member-modal');
+
+      function renderMembers() {
+        const list = document.getElementById('member-list');
+        list.innerHTML = '';
+        const members = FamilyManager.getMembers();
+
+        for (const m of members) {
+          const item = document.createElement('div');
+          item.className = 'setting-item';
+          item.style.display = 'flex';
+          item.style.justifyContent = 'space-between';
+          item.style.alignItems = 'center';
+
+          const info = document.createElement('div');
+          info.innerHTML = `
+            <div class="setting-value">${m.name}</div>
+            <div class="setting-label">本命: ${KuseiEngine.STAR_SHORT[m.honmei]} / 月命: ${KuseiEngine.STAR_SHORT[m.getsu]}</div>
+          `;
+
+          const btns = document.createElement('div');
+          btns.className = 'flex-gap';
+
+          const editBtn = document.createElement('button');
+          editBtn.className = 'btn';
+          editBtn.style.cssText = 'background:#e0e0e0;font-size:12px;padding:4px 10px;';
+          editBtn.textContent = '編集';
+          editBtn.addEventListener('click', () => openEditModal(m));
+
+          const delBtn = document.createElement('button');
+          delBtn.className = 'btn btn-danger';
+          delBtn.style.cssText = 'font-size:12px;padding:4px 10px;';
+          delBtn.textContent = '削除';
+          delBtn.addEventListener('click', () => {
+            if (confirm(`${m.name}を削除しますか？`)) {
+              FamilyManager.removeMember(m.id);
+              renderMembers();
+            }
+          });
+
+          btns.appendChild(editBtn);
+          btns.appendChild(delBtn);
+          item.appendChild(info);
+          item.appendChild(btns);
+          list.appendChild(item);
+        }
+      }
+
+      function openEditModal(member) {
+        document.getElementById('modal-title').textContent = member ? 'メンバー編集' : 'メンバー追加';
+        document.getElementById('edit-member-id').value = member ? member.id : '';
+        document.getElementById('member-name').value = member ? member.name : '';
+        document.getElementById('member-honmei').value = member ? member.honmei : 1;
+        document.getElementById('member-getsu').value = member ? member.getsu : 1;
+        modal.classList.add('active');
+      }
+
+      document.getElementById('btn-add-member').addEventListener('click', () => openEditModal(null));
+      document.getElementById('btn-cancel-member').addEventListener('click', () => modal.classList.remove('active'));
+
+      document.getElementById('btn-save-member').addEventListener('click', () => {
+        const id = document.getElementById('edit-member-id').value;
+        const name = document.getElementById('member-name').value.trim();
+        const honmei = parseInt(document.getElementById('member-honmei').value);
+        const getsu = parseInt(document.getElementById('member-getsu').value);
+        if (!name) { alert('名前を入力してください'); return; }
+
+        if (id) {
+          FamilyManager.updateMember(id, { name, honmei, getsu });
+        } else {
+          FamilyManager.addMember({ name, honmei, getsu });
+        }
+        modal.classList.remove('active');
+        renderMembers();
+      });
+
+      // Notification toggle
+      const notifToggle = document.getElementById('notif-toggle');
+      const notifSlider = document.getElementById('notif-slider');
+      const notifEnabled = localStorage.getItem('kusei_notif') === 'true';
+      notifToggle.checked = notifEnabled;
+      updateSlider();
+
+      notifToggle.addEventListener('change', async () => {
+        if (notifToggle.checked) {
+          if ('Notification' in window) {
+            const perm = await Notification.requestPermission();
+            if (perm !== 'granted') {
+              notifToggle.checked = false;
+              updateSlider();
+              alert('通知の許可が必要です。ブラウザの設定から許可してください。');
+              return;
+            }
+          }
+        }
+        localStorage.setItem('kusei_notif', notifToggle.checked);
+        updateSlider();
+      });
+
+      function updateSlider() {
+        notifSlider.style.background = notifToggle.checked ? '#1a237e' : '#ccc';
+        const dot = notifToggle.checked ? 'translateX(22px)' : 'translateX(2px)';
+        notifSlider.innerHTML = `<span style="position:absolute;top:3px;left:0;width:20px;height:20px;background:#fff;border-radius:50%;transition:.3s;transform:${dot};box-shadow:0 1px 3px rgba(0,0,0,0.3);"></span>`;
+      }
+
+      renderMembers();
+    });
+  </script>
+</body>
+</html>

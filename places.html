@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#1a237e">
+  <title>よく行く場所</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div class="header">
+    <h1>よく行く場所</h1>
+    <span id="header-date" class="header-date"></span>
+  </div>
+
+  <div class="date-picker-row">
+    <button id="btn-prev" aria-label="前日">◀</button>
+    <input type="date" id="date-input">
+    <button id="btn-next" aria-label="翌日">▶</button>
+    <button id="btn-today" class="btn-today">今日</button>
+  </div>
+
+  <div id="place-list" class="place-list"></div>
+
+  <button id="btn-add" class="add-btn" aria-label="場所を追加">+</button>
+
+  <!-- Add Place Modal -->
+  <div id="add-modal" class="modal-overlay">
+    <div class="modal">
+      <h2>場所を追加</h2>
+      <div class="form-group">
+        <label>場所の名前</label>
+        <input type="text" id="input-name" placeholder="例: 大阪（往診先）">
+      </div>
+      <div class="form-group">
+        <label>住所</label>
+        <input type="text" id="input-address" placeholder="例: 大阪市中央区">
+      </div>
+      <div id="geocode-status" style="font-size:12px;color:#757575;margin-bottom:8px;"></div>
+      <div class="form-group">
+        <label>緯度（自動入力）</label>
+        <input type="number" id="input-lat" step="0.0001" placeholder="34.6937">
+      </div>
+      <div class="form-group">
+        <label>経度（自動入力）</label>
+        <input type="number" id="input-lng" step="0.0001" placeholder="135.5023">
+      </div>
+      <div class="flex-gap mt-8">
+        <button class="btn btn-primary" id="btn-geocode" style="flex:1;">住所検索</button>
+      </div>
+      <div class="flex-gap mt-8">
+        <button class="btn btn-primary btn-block" id="btn-save" style="flex:2;">保存</button>
+        <button class="btn" id="btn-cancel" style="flex:1;background:#e0e0e0;">閉じる</button>
+      </div>
+    </div>
+  </div>
+
+  <nav class="nav">
+    <a href="index.html"><span class="nav-icon">&#x2609;</span><span>方位盤</span></a>
+    <a href="map.html"><span class="nav-icon">&#x1F5FA;</span><span>地図</span></a>
+    <a href="places.html" class="active"><span class="nav-icon">&#x2605;</span><span>場所</span></a>
+    <a href="settings.html"><span class="nav-icon">&#x2699;</span><span>設定</span></a>
+  </nav>
+
+  <script src="js/kusei-engine.js"></script>
+  <script src="js/family.js"></script>
+  <script src="js/places.js"></script>
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      let currentDate = new Date();
+      const dateInput = document.getElementById('date-input');
+      dateInput.value = formatDate(currentDate);
+
+      dateInput.addEventListener('change', () => {
+        currentDate = new Date(dateInput.value + 'T00:00:00');
+        renderPlaces();
+        updateHeader();
+      });
+      document.getElementById('btn-prev').addEventListener('click', () => {
+        currentDate.setDate(currentDate.getDate() - 1);
+        dateInput.value = formatDate(currentDate);
+        renderPlaces(); updateHeader();
+      });
+      document.getElementById('btn-next').addEventListener('click', () => {
+        currentDate.setDate(currentDate.getDate() + 1);
+        dateInput.value = formatDate(currentDate);
+        renderPlaces(); updateHeader();
+      });
+      document.getElementById('btn-today').addEventListener('click', () => {
+        currentDate = new Date();
+        dateInput.value = formatDate(currentDate);
+        renderPlaces(); updateHeader();
+      });
+
+      // Modal
+      const modal = document.getElementById('add-modal');
+      document.getElementById('btn-add').addEventListener('click', () => {
+        modal.classList.add('active');
+        document.getElementById('input-name').value = '';
+        document.getElementById('input-address').value = '';
+        document.getElementById('input-lat').value = '';
+        document.getElementById('input-lng').value = '';
+        document.getElementById('geocode-status').textContent = '';
+      });
+      document.getElementById('btn-cancel').addEventListener('click', () => modal.classList.remove('active'));
+
+      // Geocode
+      document.getElementById('btn-geocode').addEventListener('click', async () => {
+        const address = document.getElementById('input-address').value.trim();
+        if (!address) return;
+        const status = document.getElementById('geocode-status');
+        status.textContent = '検索中...';
+        const result = await PlacesManager.geocode(address);
+        if (result) {
+          document.getElementById('input-lat').value = result.lat.toFixed(4);
+          document.getElementById('input-lng').value = result.lng.toFixed(4);
+          status.textContent = `見つかりました: ${result.displayName}`;
+          status.style.color = '#2e7d32';
+        } else {
+          status.textContent = '見つかりませんでした。住所を変えて再試行してください。';
+          status.style.color = '#c62828';
+        }
+      });
+
+      // Save
+      document.getElementById('btn-save').addEventListener('click', () => {
+        const name = document.getElementById('input-name').value.trim();
+        const lat = parseFloat(document.getElementById('input-lat').value);
+        const lng = parseFloat(document.getElementById('input-lng').value);
+        const address = document.getElementById('input-address').value.trim();
+        if (!name || isNaN(lat) || isNaN(lng)) {
+          alert('名前と座標を入力してください');
+          return;
+        }
+        PlacesManager.addPlace({ name, lat, lng, address });
+        modal.classList.remove('active');
+        renderPlaces();
+      });
+
+      updateHeader();
+      renderPlaces();
+
+      function renderPlaces() {
+        const list = document.getElementById('place-list');
+        list.innerHTML = '';
+        const places = PlacesManager.getPlaces();
+        const dayInfo = KuseiEngine.getDayInfo(currentDate);
+
+        if (places.length === 0) {
+          list.innerHTML = '<div class="card text-center" style="color:#757575;">場所が登録されていません<br>+ボタンで追加してください</div>';
+          return;
+        }
+
+        const member = FamilyManager.getActiveMember();
+        for (const place of places) {
+          const { bearing, dirKey, dirName } = PlacesManager.getPlaceDirection(place);
+          const luck = KuseiEngine.getDirectionLuck(dirKey, dayInfo, member.honmei, member.getsu);
+          const starName = KuseiEngine.STAR_SHORT[luck.starInDir];
+
+          const item = document.createElement('div');
+          item.className = 'place-item';
+
+          const left = document.createElement('div');
+          left.innerHTML = `
+            <div class="place-name">${place.name}</div>
+            <div class="place-dir">${dirName}方位（${bearing.toFixed(0)}°）【${starName}】${place.address ? ' - ' + place.address : ''}</div>
+          `;
+
+          const right = document.createElement('div');
+          right.className = 'place-status';
+          if (luck.level === 'bad') {
+            right.innerHTML = `<div class="danger">⛔ ${luck.warnings.join('・')}</div>`;
+          } else if (luck.level === 'best') {
+            right.innerHTML = '<div style="color:#B8860B;font-weight:700;">🌟 本当の吉方位</div>';
+          } else if (luck.level === 'good') {
+            right.innerHTML = '<div class="safe">✅ 吉方位</div>';
+          } else if (luck.level === 'fair') {
+            right.innerHTML = '<div style="color:#558B2F;font-weight:600;">○ まずまず</div>';
+          } else {
+            right.innerHTML = '<div style="color:#757575;">ー</div>';
+          }
+
+          const del = document.createElement('button');
+          del.textContent = '削除';
+          del.className = 'btn btn-danger';
+          del.style.cssText = 'font-size:11px;padding:4px 8px;margin-left:8px;';
+          del.addEventListener('click', (e) => {
+            e.stopPropagation();
+            if (confirm(`${place.name}を削除しますか？`)) {
+              PlacesManager.removePlace(place.id);
+              renderPlaces();
+            }
+          });
+
+          item.appendChild(left);
+          const rightWrapper = document.createElement('div');
+          rightWrapper.style.display = 'flex';
+          rightWrapper.style.alignItems = 'center';
+          rightWrapper.style.gap = '4px';
+          rightWrapper.appendChild(right);
+          rightWrapper.appendChild(del);
+          item.appendChild(rightWrapper);
+          list.appendChild(item);
+        }
+      }
+
+      function updateHeader() {
+        document.getElementById('header-date').textContent =
+          `${currentDate.getFullYear()}年${currentDate.getMonth()+1}月${currentDate.getDate()}日`;
+      }
+
+      function formatDate(d) {
+        return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+      }
+    });
+  </script>
+</body>
+</html>

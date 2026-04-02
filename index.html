@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="theme-color" content="#1a237e">
+  <title>九星方位</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <!-- Header -->
+  <div class="header">
+    <h1>九星方位盤</h1>
+    <span id="header-date" class="header-date"></span>
+  </div>
+
+  <!-- Date Picker -->
+  <div class="date-picker-row">
+    <button id="btn-prev" aria-label="前日">◀</button>
+    <input type="date" id="date-input">
+    <button id="btn-next" aria-label="翌日">▶</button>
+    <button id="btn-today" class="btn-today">今日</button>
+  </div>
+
+  <!-- Member Selector -->
+  <div id="member-selector" class="member-selector"></div>
+
+  <!-- Info Chips -->
+  <div id="info-row" class="info-row"></div>
+
+  <!-- 1. Charts (horizontal scroll) - 一番上 -->
+  <div id="chart-row" class="chart-row"></div>
+
+  <!-- 2. Place Warnings - その下 -->
+  <div id="place-warnings" class="warnings-summary"></div>
+
+  <!-- 3. Warning Summary - 一番下 -->
+  <div id="warnings" class="warnings-summary"></div>
+
+  <!-- Navigation -->
+  <nav class="nav">
+    <a href="index.html" class="active">
+      <span class="nav-icon">&#x2609;</span>
+      <span>方位盤</span>
+    </a>
+    <a href="map.html">
+      <span class="nav-icon">&#x1F5FA;</span>
+      <span>地図</span>
+    </a>
+    <a href="places.html">
+      <span class="nav-icon">&#x2605;</span>
+      <span>場所</span>
+    </a>
+    <a href="settings.html">
+      <span class="nav-icon">&#x2699;</span>
+      <span>設定</span>
+    </a>
+  </nav>
+
+  <script src="js/kusei-engine.js"></script>
+  <script src="js/chart.js"></script>
+  <script src="js/family.js"></script>
+  <script src="js/places.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
