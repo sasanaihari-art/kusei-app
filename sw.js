@@ -1,4 +1,4 @@
-const CACHE_NAME = 'kusei-v1';
+const CACHE_NAME = 'kusei-v2';
 const ASSETS = [
   './', './index.html', './map.html', './places.html', './settings.html',
   './css/style.css',

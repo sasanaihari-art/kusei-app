@@ -140,15 +140,30 @@
         const dirs = ['N','NE','E','SE','S','SW','W','NW'];
         const angles = KuseiEngine.DIR_ANGLES;
 
+        const member = FamilyManager.getActiveMember();
         for (const dir of dirs) {
           const a = angles[dir];
-          const warnings = KuseiEngine.getDirectionWarnings(dir, dayInfo);
+          // 日盤ベースで表示
+          const dayWarnings = [];
+          if (dayInfo.day.goousatsu === dir) dayWarnings.push('日五黄殺');
+          if (dayInfo.day.ankensatsu === dir) dayWarnings.push('日暗剣殺');
+          // 年・月の凶もサブ表示
+          if (dayInfo.year.goousatsu === dir) dayWarnings.push('年五黄殺');
+          if (dayInfo.year.ankensatsu === dir) dayWarnings.push('年暗剣殺');
+          if (dayInfo.month.goousatsu === dir) dayWarnings.push('月五黄殺');
+          if (dayInfo.month.ankensatsu === dir) dayWarnings.push('月暗剣殺');
+
+          // 吉方位判定
+          const luck = KuseiEngine.getDirectionLuck(dir, dayInfo, member.honmei, member.getsu);
 
           let color = 'rgba(76,175,80,0.12)';
           let borderColor = '#4CAF50';
-          if (warnings.some(w => w.includes('五黄殺'))) { color = 'rgba(198,40,40,0.18)'; borderColor = '#c62828'; }
-          else if (warnings.some(w => w.includes('暗剣殺'))) { color = 'rgba(74,20,140,0.18)'; borderColor = '#4a148c'; }
-          else if (warnings.some(w => w.includes('破'))) { color = 'rgba(230,81,0,0.15)'; borderColor = '#e65100'; }
+          if (dayWarnings.some(w => w.includes('五黄殺'))) { color = 'rgba(198,40,40,0.18)'; borderColor = '#c62828'; }
+          else if (dayWarnings.some(w => w.includes('暗剣殺'))) { color = 'rgba(74,20,140,0.18)'; borderColor = '#4a148c'; }
+          else if (dayWarnings.some(w => w.includes('破'))) { color = 'rgba(230,81,0,0.15)'; borderColor = '#e65100'; }
+          else if (luck.level === 'best') { color = 'rgba(255,215,0,0.2)'; borderColor = '#B8860B'; }
+          else if (luck.level === 'good') { color = 'rgba(46,125,50,0.15)'; borderColor = '#2e7d32'; }
+          else if (luck.level === 'fair') { color = 'rgba(85,139,47,0.12)'; borderColor = '#558B2F'; }
 
           // Draw sector
           const points = [L.latLng(home.lat, home.lng)];
@@ -178,7 +193,7 @@
 
           const dirIdx = KuseiEngine.DIR_KEYS.indexOf(dir);
           const dirName = KuseiEngine.DIRECTIONS[dirIdx];
-          const warnText = warnings.length > 0 ? `<br><b style="color:${borderColor}">${warnings[0]}</b>` : '';
+          const warnText = dayWarnings.length > 0 ? `<br><b style="color:${borderColor}">${dayWarnings[0]}</b>` : '';
 
           L.marker([labelLat, labelLng], {
             icon: L.divIcon({
@@ -191,7 +206,6 @@
 
         // Registered places markers with luck info
         const places = PlacesManager.getPlaces();
-        const member = FamilyManager.getActiveMember();
         for (const place of places) {
           const { dirKey, dirName } = PlacesManager.getPlaceDirection(place);
           const luck = KuseiEngine.getDirectionLuck(dirKey, dayInfo, member.honmei, member.getsu);
