@@ -73,27 +73,37 @@ const KuseiEngine = (() => {
     2036: [[1,6],[2,4],[3,5],[4,4],[5,5],[6,5],[7,6],[8,7],[9,7],[10,8],[11,7],[12,7]],
   };
 
-  // 陽遁開始基準日（冬至直近の甲子日）と陰遁開始基準日（夏至直近の甲子日）
-  // 陽遁: 冬至に最も近い甲子日から一白で上昇
-  // 陰遁: 夏至に最も近い甲子日から九紫で下降
-  // 2024-2036年の陽遁・陰遁切替データ
-  const YOTON_INTON = {
-    // [陽遁開始日, 開始星, 陰遁開始日, 開始星]
-    // 陽遁: 冬至の甲子日から1で上昇、陰遁: 夏至の甲子日から9で下降
-    2024: { youton: new Date(2023, 11, 22), youtonStar: 1, inton: new Date(2024, 5, 20), intonStar: 9 },
-    2025: { youton: new Date(2024, 11, 21), youtonStar: 1, inton: new Date(2025, 5, 21), intonStar: 9 },
-    2026: { youton: new Date(2025, 11, 22), youtonStar: 1, inton: new Date(2026, 5, 21), intonStar: 9 },
-    2027: { youton: new Date(2026, 11, 22), youtonStar: 1, inton: new Date(2027, 5, 21), intonStar: 9 },
-    2028: { youton: new Date(2027, 11, 22), youtonStar: 1, inton: new Date(2028, 5, 20), intonStar: 9 },
-    2029: { youton: new Date(2028, 11, 21), youtonStar: 1, inton: new Date(2029, 5, 21), intonStar: 9 },
-    2030: { youton: new Date(2029, 11, 22), youtonStar: 1, inton: new Date(2030, 5, 21), intonStar: 9 },
-    2031: { youton: new Date(2030, 11, 22), youtonStar: 1, inton: new Date(2031, 5, 21), intonStar: 9 },
-    2032: { youton: new Date(2031, 11, 22), youtonStar: 1, inton: new Date(2032, 5, 20), intonStar: 9 },
-    2033: { youton: new Date(2032, 11, 21), youtonStar: 1, inton: new Date(2033, 5, 21), intonStar: 9 },
-    2034: { youton: new Date(2033, 11, 22), youtonStar: 1, inton: new Date(2034, 5, 21), intonStar: 9 },
-    2035: { youton: new Date(2034, 11, 22), youtonStar: 1, inton: new Date(2035, 5, 21), intonStar: 9 },
-    2036: { youton: new Date(2035, 11, 22), youtonStar: 1, inton: new Date(2036, 5, 20), intonStar: 9 },
-  };
+  // 基準甲子日（2026年6月19日 = 甲子日、暦より確認済み）
+  const REF_KINOE_NE = new Date(2026, 5, 19);
+  const MS_PER_DAY = 86400000;
+
+  /**
+   * 指定した日付に最も近い甲子日を返す
+   * 甲子日は60日周期で巡る
+   */
+  function nearestKinoeNe(targetDate) {
+    const diff = Math.round((targetDate.getTime() - REF_KINOE_NE.getTime()) / MS_PER_DAY);
+    const pos = ((diff % 60) + 60) % 60; // 0 = 甲子日
+    const before = new Date(targetDate.getTime() - pos * MS_PER_DAY);
+    const after = new Date(before.getTime() + 60 * MS_PER_DAY);
+    return Math.abs(targetDate - before) <= Math.abs(targetDate - after) ? before : after;
+  }
+
+  /**
+   * 指定年の陽遁・陰遁切替日（甲子日）を取得
+   * 陽遁: 前年冬至に最も近い甲子日から一白(1)で上昇
+   * 陰遁: 夏至に最も近い甲子日から九紫(9)で下降
+   */
+  function getTransitions(year) {
+    const summerSolstice = new Date(year, 5, 21);
+    const prevWinterSolstice = new Date(year - 1, 11, 22);
+    const winterSolstice = new Date(year, 11, 22);
+    return {
+      youtonStart: nearestKinoeNe(prevWinterSolstice),
+      intonStart: nearestKinoeNe(summerSolstice),
+      nextYoutonStart: nearestKinoeNe(winterSolstice)
+    };
+  }
 
   /**
    * 年の中央星を算出
@@ -181,51 +191,40 @@ const KuseiEngine = (() => {
 
   /**
    * 日の中央星を算出
-   * 陽遁（上昇）と陰遁（下降）のサイクルに基づく
+   * 甲子日ベースの陽遁（上昇）・陰遁（下降）サイクル
+   * 陽遁: 冬至近くの甲子日から一白(1)で上昇 1→2→3→...→9→1→...
+   * 陰遁: 夏至近くの甲子日から九紫(9)で下降 9→8→7→...→1→9→...
    */
   function getDayStar(date) {
-    // 基準日方式: 既知の日の九星から日数差で算出
-    // 2026年1月1日 = 三碧木星（暦の写真から）
-    // 陽遁中（上昇）: 冬至→夏至
-    const baseDate = new Date(2026, 0, 1); // 2026/1/1
-    const baseStar = 3; // 三碧
+    const target = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const year = target.getFullYear();
+    const trans = getTransitions(year);
 
-    const diffDays = Math.floor((date.getTime() - baseDate.getTime()) / (24 * 60 * 60 * 1000));
+    const refTime = REF_KINOE_NE.getTime();
+    const targetDays = Math.round((target.getTime() - refTime) / MS_PER_DAY);
+    const intonDays = Math.round((trans.intonStart.getTime() - refTime) / MS_PER_DAY);
+    const nextYoutonDays = Math.round((trans.nextYoutonStart.getTime() - refTime) / MS_PER_DAY);
 
-    // 陽遁か陰遁かを判定
-    const year = date.getFullYear();
-    const isYouton = isYoutonPeriod(date);
-
-    if (isYouton) {
-      // 陽遁: 上昇 (1→2→3→...→9→1→...)
-      let star = ((baseStar - 1 + diffDays) % 9) + 1;
+    if (targetDays >= intonDays && targetDays < nextYoutonDays) {
+      // 陰遁: 九紫(9)から下降
+      const days = targetDays - intonDays;
+      let star = 9 - (days % 9);
       if (star <= 0) star += 9;
       return star;
     } else {
-      // 陰遁: 下降 (9→8→7→...→1→9→...)
-      let star = ((baseStar - 1 - diffDays) % 9);
-      if (star < 0) star += 9;
-      return star + 1;
+      // 陽遁: 一白(1)から上昇
+      let youtonDays = Math.round((trans.youtonStart.getTime() - refTime) / MS_PER_DAY);
+      let days = targetDays - youtonDays;
+      // 年末（次の陽遁開始後）の場合
+      if (days < 0) {
+        const prevTrans = getTransitions(year - 1);
+        youtonDays = Math.round((prevTrans.youtonStart.getTime() - refTime) / MS_PER_DAY);
+        days = targetDays - youtonDays;
+      }
+      let star = (days % 9) + 1;
+      if (star <= 0) star += 9;
+      return star;
     }
-  }
-
-  /**
-   * 陽遁期間かどうか判定
-   */
-  function isYoutonPeriod(date) {
-    const year = date.getFullYear();
-    // 大まかに: 冬至（12月22日頃）〜 夏至（6月21日頃）= 陽遁
-    // 夏至〜冬至 = 陰遁
-    const month = date.getMonth();
-    const day = date.getDate();
-
-    // 冬至は前年の12月22日頃
-    if (month >= 0 && month < 5) return true; // 1-5月
-    if (month === 5 && day < 21) return true; // 6月21日前
-    if (month >= 6 && month < 11) return false; // 7-11月
-    if (month === 5 && day >= 21) return false; // 6月21日以降
-    if (month === 11 && day >= 22) return true; // 12月22日以降
-    return false; // 12月22日前
   }
 
   /**
